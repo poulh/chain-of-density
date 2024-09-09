@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--num-passes", type=int, default=5, help="Number of passes to summarize")
     parser.add_argument("--length-in-words", type=int, default=80, help="Length of summary in words")
     parser.add_argument("--num-entities", type=int, default=3, help="Number of entities to identify in each summary")
-    parser.add_argument("--model", type=str, default="gpt-4o", help="Model to use for summarization")
+    parser.add_argument("--model", type=str, default="gpt-4o-2024-08-06", help="Model to use for summarization")
 
     args = parser.parse_args()
 
@@ -105,41 +105,25 @@ def main():
       > Remember to use the exact same number of words for each summary.
       > Write the missing entities in missing_entities
       > Write the summary in denser_summary
+      > Repeat the steps {num_passes} times per instructions above
       """
-    # print(chain_of_density_prompt)
-
-    # exit()
-
     conversation = Conversation(
         messages=[
             Message(role="system", content=chain_of_density_system_prompt),
             Message(role="user", content=chain_of_density_prompt),
         ]
     )
-    # print(conversation.dict()['messages'])
 
+    openai_resp = client.beta.chat.completions.parse(model=args.model,
+                                                     messages=conversation.dict()['messages'],
+                                                     response_format=DenserSummaryCollection)
 
+    dense_summary_collection = openai_resp.choices[0].message.parsed
+    for summary in dense_summary_collection.summaries:
+        print(summary.denser_summary)
+        print(summary.missing_entities)
+        print("---")
 
-    response = client.chat.completions.create(
-        messages=conversation.dict()['messages'],
-        model=args.model,
-        temperature=0,
-        # functions=[
-        #     {
-        #         "name": "denser_summary_response",
-        #         "description": "A function that returns denser summaries in a structured JSON format",
-        #         "parameters": json_schema
-        #     }
-        # ],
-        #function_call={"name": "denser_summary_response"}
-    )
-    #completion = client.beta.chat.completions.parse(
-
-
-    # Extract and return the generated extension
-    message = response.choices[0].message.content.strip()
-    # print(response.choices)
-    print(message)
 
 if __name__ == "__main__":
     main()
